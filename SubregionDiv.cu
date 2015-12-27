@@ -1,7 +1,12 @@
+/********************************************************************
+*  sample.cu
+*  This is a example of the CUDA program.
+*********************************************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
-// #include <cutil_inline.h>
 #include <helper_functions.h>
+#include <helper_cuda.h>
 
 
 
@@ -9,29 +14,22 @@
 //////////////////////////////////////////////////////////////////////////
 #define RowSize 5 //定义5*5的lattice路网
 #define NodeNumTol 25
-// Do not consider the road beyond the lattice
 #define RoadNum 40
 #define NodeConnectNumMax 4
 
 #define NumofRoads 4
-// lanes for a road
 #define NumofLanes 3
 
 #define RoadSIZE 130 //行驶道路车辆最大数目
-// in meter
 #define VehicleLength 4
 
 #define pi 3.1415926
 
 
 #define NumofPhase 4  //每个路口有4个信号灯控制相
-// min for phase time
 #define Cmin 120
-// max for phase time
 #define Cmax 240
-// min green time
 #define GreenTimeInPhaseMin 6
-// max green time
 #define GreenTimeInPhaseMax 90
 
 #define flow 0.01
@@ -48,7 +46,6 @@
 struct VehicleAgent
 {
 	//车辆序号
-	// smaller number is in front
 	int VehicleID;
 
 	float position;//位置
@@ -75,7 +72,6 @@ struct RoadAgent
 struct TrafficLightsAgent
 {
 	//四项的绿灯状态
-	// west and east go, then left, then south and north go, then left
 	bool GreenLightStatus_Phase1;
 	bool GreenLightStatus_Phase2;
 	bool GreenLightStatus_Phase3;
@@ -98,9 +94,7 @@ struct RoadNetworkResTemplate
 	int NodeIndex;
 
 	//定义本节点的四条道路与其他节点相连的节点序号
-	// 0, north, 1 west, 2 south, 3 east
 	int NodeLinkTo[NumofRoads];
-	// 0, south, 1 east, 2 north, 3 west
 	int RoadLinkTo[NumofRoads];
 
 	//定义交通灯
@@ -245,9 +239,7 @@ void RoadNetworkInitial()
 		{	
 			if (i==0)
 			{
-				// starts from north 0, then west 1, then south 2, then east 3
 				RoadNetworkRes[i].NodeLinkTo[0]=-1;
-				// starts from south 0, then east 1, then north 2, then west 3
 				RoadNetworkRes[i].RoadLinkTo[0]=-1;
 
 				RoadNetworkRes[i].NodeLinkTo[1]=-1;
@@ -566,7 +558,8 @@ void TrafficControlProGen2()
 	}
 }
 
-void TrafficControlProGen()  //生成交通灯控制方案
+void TrafficControlProGen()
+//生成交通灯控制方案
 {
 	srand(time(0));
 	int C=Cmin+((Cmax-Cmin)*((float)rand()/RAND_MAX));
@@ -591,18 +584,18 @@ void TrafficControlProGen()  //生成交通灯控制方案
 		RoadNetworkRes[i].TrafficLight.GreenDuration__Phase1=GreenTimeInPhaseMin+((GreenTimeInPhaseMax-GreenTimeInPhaseMin)*((float)rand()/RAND_MAX));
 		
 		//第二相绿灯持续时间
-		int temp = RoadNetworkRes[i].TrafficLight.cycle - RoadNetworkRes[i].TrafficLight.GreenDuration__Phase1;
-		if (temp > GreenTimeInPhaseMax)
+		int temp=RoadNetworkRes[i].TrafficLight.cycle-RoadNetworkRes[i].TrafficLight.GreenDuration__Phase1;
+		if (temp>GreenTimeInPhaseMax)
 		{
-			RoadNetworkRes[i].TrafficLight.GreenDuration__Phase2 = GreenTimeInPhaseMin + ((GreenTimeInPhaseMax-GreenTimeInPhaseMin) * ((float)rand()/RAND_MAX));
+			RoadNetworkRes[i].TrafficLight.GreenDuration__Phase2=GreenTimeInPhaseMin+((GreenTimeInPhaseMax-GreenTimeInPhaseMin)*((float)rand()/RAND_MAX));
 		}
 		else
 		{
-			RoadNetworkRes[i].TrafficLight.GreenDuration__Phase2 = GreenTimeInPhaseMin + ((temp - GreenTimeInPhaseMin)*((float)rand()/RAND_MAX));
+			RoadNetworkRes[i].TrafficLight.GreenDuration__Phase2=GreenTimeInPhaseMin+((temp-GreenTimeInPhaseMin)*((float)rand()/RAND_MAX));
 		}
 		
 		//第三相绿灯持续时间
-		temp = RoadNetworkRes[i].TrafficLight.cycle-RoadNetworkRes[i].TrafficLight.GreenDuration__Phase1-RoadNetworkRes[i].TrafficLight.GreenDuration__Phase2;
+		temp=RoadNetworkRes[i].TrafficLight.cycle-RoadNetworkRes[i].TrafficLight.GreenDuration__Phase1-RoadNetworkRes[i].TrafficLight.GreenDuration__Phase2;
 		if (temp>GreenTimeInPhaseMax)
 		{
 			RoadNetworkRes[i].TrafficLight.GreenDuration__Phase3=GreenTimeInPhaseMin+((GreenTimeInPhaseMax-GreenTimeInPhaseMin)*((float)rand()/RAND_MAX));
@@ -614,14 +607,17 @@ void TrafficControlProGen()  //生成交通灯控制方案
 
 		//第四相绿灯持续时间
 		int SumThree=RoadNetworkRes[i].TrafficLight.GreenDuration__Phase1+RoadNetworkRes[i].TrafficLight.GreenDuration__Phase2+RoadNetworkRes[i].TrafficLight.GreenDuration__Phase3;
-		RoadNetworkRes[i].TrafficLight.GreenDuration__Phase4=RoadNetworkRes[i].TrafficLight.cycle - SumThree;
+		RoadNetworkRes[i].TrafficLight.GreenDuration__Phase4=RoadNetworkRes[i].TrafficLight.cycle-SumThree;
+		
+
 	}
+
 }
 
 void TrafficLightsRefresh()
 //交通灯信号刷新
 {
-	for (int i = 0; i < NodeNumTol; i++)
+	for (int i=0;i<NodeNumTol;i++)
 	{
 		if(i==0)
 		{
@@ -660,6 +656,7 @@ void TrafficLightsRefresh()
 				RoadNetworkRes[i].TrafficLight.GreenLightStatus_Phase3=false;
 				RoadNetworkRes[i].TrafficLight.GreenLightStatus_Phase4=true;
 			}
+
 		}
 		else
 		{
@@ -708,16 +705,20 @@ void TrafficLightsRefresh()
 					RoadNetworkRes[i].TrafficLight.GreenLightStatus_Phase3=false;
 					RoadNetworkRes[i].TrafficLight.GreenLightStatus_Phase4=true;
 				}
+
 			}
 		}
+		
+
 	}
+
 }
 
 int VehGenEvent[NodeNumTol][NumofRoads][NumofLanes];//发生车辆生成事件的时间点
 double interval[NodeNumTol][NumofRoads][NumofLanes];
 int intervalReal[NodeNumTol][NumofRoads][NumofLanes];
 
-float RandomGen(float Lambda)
+float RandomGen(float Lamda)
 {
 	float Z;
 	float output;
@@ -729,7 +730,7 @@ float RandomGen(float Lambda)
 	while ((Z==0)||(Z==1));
 
 	float Z1=log(Z);
-	float X=1/Lambda;
+	float X=1/Lamda;
 	output=-X*Z1;
 
 	return (output);
@@ -789,56 +790,58 @@ void VehicleGeneration()
 				else
 				{
 					if (VehGenEvent[n][r][l]==SimulationClock)//遇到车辆进入事件
-					{
-						//****(1) 在这里需要实例化车辆对象，并加入道路队列
-						srand(unsigned(randn));
-						randn=rand();
-						//生成车辆
-						VehicleAgent AgentCar;
-						AgentCar.position=0;//路段总长度为1000米，初始发车位置为0！注意要区别于初始化位置-1
-						AgentCar.speed=10;//float(abs(GaussRandomGen(40/3.6,0.0001)));//速度平均值为40km/小时
-						AgentCar.acceleration=0;//设定初始加速度为0，即匀速进入，这里也可以符合高斯分布进入				
-						AgentCar.ExpSpeed=60/3.6+(20/3.6)*((float)rand()/RAND_MAX);
-
-						AgentCar.RoadTimeConsumed=0;
-						int temp2;
-						temp2=RoadNetworkRes[n].NodeLinkTo[r];
-
-						bool yesornot;
-						// wangkai
-						if ((n==1&&r==1)||(n==5&&r==0)||(n==3&&r==3)||(n==9&&r==0)||(n==15&&r==2)||(n==21&&r==1)||(n==19&&r==2)||(n==23&&r==3))//(n==7&&r==2)||(n==11&&r==3)||(n==13&&r==1)||(n==17&&r==0)/
 						{
-
-							int rear=RoadNetworkRes[n].Road[r][l].RoadRear;
-							int front=RoadNetworkRes[n].Road[r][l].RoadFront;
-							if ((rear+1)%RoadSIZE!=front)
+							//****(1) 在这里需要实例化车辆对象，并加入道路队列
+							srand(unsigned(randn));
+							randn=rand();
+							//生成车辆
+							VehicleAgent AgentCar;
+							AgentCar.position=0;//路段总长度为1000米，初始发车位置为0！注意要区别于初始化位置-1
+							AgentCar.speed=10;//float(abs(GaussRandomGen(40/3.6,0.0001)));//速度平均值为40km/小时
+							AgentCar.acceleration=0;//设定初始加速度为0，即匀速进入，这里也可以符合高斯分布进入				
+							AgentCar.ExpSpeed=60/3.6+(20/3.6)*((float)rand()/RAND_MAX);
+							
+							AgentCar.RoadTimeConsumed=0;
+							int temp2;
+							temp2=RoadNetworkRes[n].NodeLinkTo[r];
+						
+							bool yesornot;
+							//!wangkai
+							if ((n==1&&r==1)||(n==5&&r==0)||(n==3&&r==3)||(n==9&&r==0)||(n==15&&r==2)||(n==21&&r==1)||(n==19&&r==2)||(n==23&&r==3))//(n==7&&r==2)||(n==11&&r==3)||(n==13&&r==1)||(n==17&&r==0)/
 							{
-								RoadNetworkRes[n].Road[r][l].BufferRoad[rear].position=AgentCar.position;
-								RoadNetworkRes[n].Road[r][l].BufferRoad[rear].speed=AgentCar.speed;
-								RoadNetworkRes[n].Road[r][l].BufferRoad[rear].acceleration=AgentCar.acceleration;
-								RoadNetworkRes[n].Road[r][l].BufferRoad[rear].ExpSpeed=AgentCar.ExpSpeed;
-								RoadNetworkRes[n].Road[r][l].BufferRoad[rear].RoadTimeConsumed=AgentCar.RoadTimeConsumed;
-								RoadNetworkRes[n].Road[r][l].BufferRoad[rear].VehicleFlag=true;
-								RoadNetworkRes[n].Road[r][l].RoadRear=(RoadNetworkRes[n].Road[r][l].RoadRear+1)%RoadSIZE;//循环队列的操作
-								RoadNetworkRes[n].Road[r][l].RoadCount++;
+								
+								int rear=RoadNetworkRes[n].Road[r][l].RoadRear;
+								int front=RoadNetworkRes[n].Road[r][l].RoadFront;
+								if ((rear+1)%RoadSIZE!=front)
+								{
+									RoadNetworkRes[n].Road[r][l].BufferRoad[rear].position=AgentCar.position;
+									RoadNetworkRes[n].Road[r][l].BufferRoad[rear].speed=AgentCar.speed;
+									RoadNetworkRes[n].Road[r][l].BufferRoad[rear].acceleration=AgentCar.acceleration;
+									RoadNetworkRes[n].Road[r][l].BufferRoad[rear].ExpSpeed=AgentCar.ExpSpeed;
+									RoadNetworkRes[n].Road[r][l].BufferRoad[rear].RoadTimeConsumed=AgentCar.RoadTimeConsumed;
+									RoadNetworkRes[n].Road[r][l].BufferRoad[rear].VehicleFlag=true;
+									RoadNetworkRes[n].Road[r][l].RoadRear=(RoadNetworkRes[n].Road[r][l].RoadRear+1)%RoadSIZE;//循环队列的操作
+									RoadNetworkRes[n].Road[r][l].RoadCount++;
+								}
+								
 							}
-
+							//****(2) 生成下一次车辆到达的时间
+							float VehArriveRate=RoadNetworkRes[n].VehicleArrRate[r];//三条车道共享同一车辆到达数据
+							interval[n][r][l]=RandomGen(VehArriveRate);
+							intervalReal[n][r][l]=int(interval[n][r][l]+1);//转换为整形数据
+							VehGenEvent[n][r][l]=SimulationClock+intervalReal[n][r][l];
 						}
-						//****(2) 生成下一次车辆到达的时间
-						float VehArriveRate=RoadNetworkRes[n].VehicleArrRate[r];//三条车道共享同一车辆到达数据
-						interval[n][r][l]=RandomGen(VehArriveRate);
-						intervalReal[n][r][l]=int(interval[n][r][l]+1);//转换为整形数据
-						VehGenEvent[n][r][l]=SimulationClock+intervalReal[n][r][l];
-					}
-					else
-					{
-						VehGenEvent[n][r][l]=VehGenEvent[n][r][l];
-					}
+						else
+						{
+							VehGenEvent[n][r][l]=VehGenEvent[n][r][l];
+						}
 				}
 
 			}
 		}
 	}
+	
+
 }
 
 
@@ -874,7 +877,8 @@ void SimulationProcess()
 						//！非头车状态更新1
 						if(v>0 && RoadNetworkRes[n].Road[r][l].BufferRoad[v-1].VehicleFlag==true)
 						{
-							if (RoadNetworkRes[n].Road[r][l].BufferRoad[v-1].position<RoadNetworkRes[n].Road[r][l].BufferRoad[v].position) //不合理保护
+							if (RoadNetworkRes[n].Road[r][l].BufferRoad[v-1].position<RoadNetworkRes[n].Road[r][l].BufferRoad[v].position)
+								//不合理保护
 							{
 								positionNew=RoadNetworkRes[n].Road[r][l].BufferRoad[v].position;
 								speedNew=0;
@@ -885,7 +889,7 @@ void SimulationProcess()
 							{
 								if (RoadNetworkRes[n].Road[r][l].BufferRoad[v].position==0)//刚发车的车辆
 								{
-									if (RoadNetworkRes[n].Road[r][l].BufferRoad[v-1].position>0) //前车已处于运行状态，本次发车需要避免初始速度过大
+									if (RoadNetworkRes[n].Road[r][l].BufferRoad[v-1].position>0)//前车已处于运行状态，本次发车需要避免初始速度过大
 									{
 										while(RoadNetworkRes[n].Road[r][l].BufferRoad[v].speed*1>RoadNetworkRes[n].Road[r][l].BufferRoad[v-1].position)
 											//调整发车速度
@@ -1179,6 +1183,7 @@ void SimulationProcess()
 									if(RoadNetworkRes[n].Road[r][l].BufferRoad[v].speed<RoadNetworkRes[n].Road[r][l].BufferRoad[v].ExpSpeed)
 										accelerationNew=RoadNetworkRes[n].Road[r][l].BufferRoad[v].acceleration+1;
 									else
+
 									{
 										speedNew=RoadNetworkRes[n].Road[r][l].BufferRoad[v].ExpSpeed;
 										accelerationNew=0;//速度达到期望速度后转入匀速行驶
@@ -1251,6 +1256,7 @@ void SimulationProcess()
 									if(RoadNetworkRes[n].Road[r][l].BufferRoad[v].speed<RoadNetworkRes[n].Road[r][l].BufferRoad[v].ExpSpeed)
 										accelerationNew=RoadNetworkRes[n].Road[r][l].BufferRoad[v].acceleration+1;
 									else
+
 									{
 										speedNew=RoadNetworkRes[n].Road[r][l].BufferRoad[v].ExpSpeed;
 										accelerationNew=0;//速度达到期望速度后转入匀速行驶
@@ -1391,11 +1397,19 @@ void SimulationProcess()
 						{
 							RoadNetworkRes[n].Road[r][l].BufferRoad[v].RoadTimeConsumed=RoadNetworkRes[n].Road[r][l].BufferRoad[v].RoadTimeConsumed+1;
 						}
+						
+					
 					}
+
+
 				}
+				
+
 			}
 		}
 	}
+	
+
 }
 
 
@@ -1749,7 +1763,8 @@ void PeopleInitial()
 			{
 				PeopleCurrent[i].NRelation[sa][sa2]=-1;
 				PeopleNew[i].NRelation[sa][sa2]=-1;
-			}			
+			}
+			
 		}
 		
 		//划分方案适应度付初值
@@ -1800,7 +1815,7 @@ void EvaluatePeopleCurrent()
 			}
 
 		}
-		//划分方案适应度赋初值
+		//划分方案适应度付初值
 		PeopleCurrent[i].fitness=0;
 	}
 
@@ -1882,7 +1897,7 @@ void EvaluatePeopleCurrent()
 			//存储树节点的叶节点数据的一维数组索引变量
 			 LeafIdx=0;
 			//确定当前树的根节点			
-			rootIdx=0;
+			 rootIdx=0;
 			root=-1;
 			for (int k=0;k<NodeNumTol;k++)
 			{
@@ -1935,7 +1950,8 @@ void EvaluatePeopleCurrent()
 				if (tree[rootIdx].NodeIndex!=-1)
 				{
 					roottemp=tree[rootIdx].NodeIndex;
-				}				
+				}
+				
 			}
 			
 
@@ -1952,6 +1968,8 @@ void EvaluatePeopleCurrent()
 
 				treeNumber=treeNumber+1;
 			}
+			
+
 		}
 
 
@@ -2044,6 +2062,7 @@ void EvaluatePeopleCurrent()
 		}
 
 		PeopleCurrent[i].fitness=-pow(PeopleCurrent[i].N,2.0)+AreaScore;
+
 	}
 
 	int aa=0;
@@ -2129,17 +2148,18 @@ void EvaluatePeopleNew()
 	//所有与划分方案评价相关的变量初始化
 	for (int i=0;i<PeopleNum;i++)
 	{
-		//划分方案对应的子区数目赋初值
+		//划分方案对应的子区数目付初值
 		PeopleNew[i].N=0;
-		//划分方案对应的子区适应度数组赋初值
+		//划分方案对应的子区适应度数组付初值
 		for(int sa=0;sa<NodeNumTol;sa++)	
 		{
 			for (int sa2=0;sa2<NodeNumTol;sa2++)
 			{
 				PeopleNew[i].NRelation[sa][sa2]=-1;
 			}
+
 		}
-		//划分方案适应度赋初值
+		//划分方案适应度付初值
 		PeopleNew[i].fitness=0;
 	}
 
@@ -2208,6 +2228,7 @@ void EvaluatePeopleNew()
 				{
 					tree[mm].Leaf[mml]=-1;
 				}
+
 			}
 
 			for(int Tidx=0;Tidx<NodeNumTol;Tidx++)
@@ -2279,6 +2300,7 @@ void EvaluatePeopleNew()
 				{
 					roottemp=tree[rootIdx].NodeIndex;
 				}
+
 			}
 
 
@@ -2295,11 +2317,14 @@ void EvaluatePeopleNew()
 
 				treeNumber=treeNumber+1;
 			}
+
+
 		}
 
 
 		//计算不同划分方案评分
 		PeopleNew[i].N=treeNumber;
+
 
 		int AreaNumber=treeNumber;
 		float AreaScore=0;
@@ -2313,6 +2338,7 @@ void EvaluatePeopleNew()
 		int temp2index=0;
 		for (int nn=0;nn<AreaNumber;nn++)
 		{
+
 			for (int n2=0;n2<NodeNumTol;n2++)
 			{
 				temp[n2]=PeopleNew[i].NRelation[nn][n2];
@@ -2402,8 +2428,9 @@ void SelectionOpration()
 
 	}
 }
-
-
+/************************************************************************/
+/* HelloCUDA                                                            */
+/************************************************************************/
 int main(int argc, char* argv[])
 {
 ///////////////////////////////////////////////////////////
@@ -2412,7 +2439,7 @@ int main(int argc, char* argv[])
 
 	int ComputeMode;
 	//0：CPU计算模式  其他：GPU计算模式
-	ComputeMode=1;
+	ComputeMode=0;
 
 	//初始化路网拓扑
 	RoadNetworkInitial();
@@ -2478,6 +2505,7 @@ int main(int argc, char* argv[])
 				LapVector[TempIdx]=LapMatirx[i][j];
 				TempIdx++;
 			}
+
 		}
 	}
 
